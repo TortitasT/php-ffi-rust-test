@@ -2,11 +2,6 @@ use ravif::RGBA8;
 use std::{fs::File, io::Write};
 
 #[no_mangle]
-pub extern "C" fn add(a: i32, b: i32) -> i32 {
-    return a + b;
-}
-
-#[no_mangle]
 pub extern "C" fn png_to_avif(input: *const libc::c_uchar, input_len: u32) {
     let path_str = unsafe {
         std::str::from_utf8_unchecked(std::slice::from_raw_parts(input, input_len as usize))
