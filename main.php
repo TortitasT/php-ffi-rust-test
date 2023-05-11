@@ -1,5 +1,5 @@
 <?php
-$png_image_path = __DIR__ . '/test.png';
+$png_image_path = __DIR__ . '\tests\stubs\test.png';
 
 $start = microtime(true);
 
@@ -7,8 +7,9 @@ png_to_avif($png_image_path);
 
 echo 'Time: ' . (microtime(true) - $start) . 's' . PHP_EOL;
 
-function png_to_avif($input) {
-    $ffi_definition = 'void png_to_avif(char *input, int input_len);';
+function png_to_avif($path, $quality = 70.0, $speed = 4) {
+    // $ffi_definition = 'void image_to_avif(char *input, int input_len, char *output, int output_len, float quality, uint8_t speed);';
+    $ffi_definition = 'void png_to_avif(char *input, int input_len, char *output, int output_len);';
 
     $ffi_path_extension = match (PHP_OS_FAMILY) {
         'Darwin' => 'dylib',
@@ -20,7 +21,10 @@ function png_to_avif($input) {
 
     $ffi = FFI::cdef($ffi_definition, $ffi_path);
 
-    $ffi->png_to_avif($input, strlen($input));
+    $output_path = str_replace('.png', '.avif', $path);
+
+    // $ffi->image_to_avif($path, strlen($path), $output_path, strlen($output_path), $quality, $speed);
+    $ffi->png_to_avif($path, strlen($path), $output_path, strlen($output_path));
 }
 ?>
 
