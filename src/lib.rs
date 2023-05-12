@@ -1,4 +1,5 @@
 use libc::c_uchar;
+use ravif::Img;
 use ravif::RGBA8;
 use std::{fs::File, io::Write};
 
@@ -12,7 +13,6 @@ pub extern "C" fn image_to_avif(
     speed: u8,
 ) {
     let input_path = input_to_string(input, input_len);
-
     let output_path = input_to_string(output, output_len);
 
     let image_format = input_path.split('.').last().unwrap();
@@ -26,22 +26,18 @@ pub extern "C" fn image_to_avif(
     let encoder = ravif::Encoder::new()
         .with_quality(quality)
         .with_speed(speed)
-        .encode_rgba(ravif::Img::new(&pixels, width, height));
+        .encode_rgba(Img::new(&pixels, width, height))
+        .unwrap();
 
     let mut file = File::create(output_path).unwrap();
-    if let Err(e) = encoder {
-        panic!("Error: {}", e)
-    }
 
-    let ouput_buf = encoder.unwrap().avif_file;
+    let ouput_buf = encoder.avif_file;
 
     file.write_all(&ouput_buf).unwrap();
 }
 
 fn input_to_string(input: *const c_uchar, input_len: u32) -> &'static str {
-    return unsafe {
-        std::str::from_utf8_unchecked(std::slice::from_raw_parts(input, input_len as usize))
-    };
+    unsafe { std::str::from_utf8_unchecked(std::slice::from_raw_parts(input, input_len as usize)) }
 }
 
 fn get_image_png(path: &str) -> (Vec<RGBA8>, usize, usize) {
@@ -52,8 +48,8 @@ fn get_image_png(path: &str) -> (Vec<RGBA8>, usize, usize) {
     let info = reader.next_frame(&mut buf).unwrap();
     let bytes = &buf[..info.buffer_size()];
 
-    let width = info.width;
-    let height = info.height;
+    let width = info.width as usize;
+    let height = info.height as usize;
 
     let pixels: Vec<RGBA8> = bytes
         .chunks_exact(4)
@@ -64,14 +60,27 @@ fn get_image_png(path: &str) -> (Vec<RGBA8>, usize, usize) {
             a: chunk[3],
         })
         .collect();
-    let width_usize = width as usize;
-    let height_usize = height as usize;
 
-    return (pixels, width_usize, height_usize);
+    (pixels, width, height)
 }
 
 fn get_image_jpeg(path: &str) -> (Vec<RGBA8>, usize, usize) {
-    let decoder = jpeg_decoder::Decoder::new(File::open(path).unwrap());
+    let decoder = image::io::Reader::open(path).unwrap();
 
-    panic!("Unsupported image format");
+    let img = decoder.decode().unwrap().to_rgba8();
+
+    let width = img.width() as usize;
+    let height = img.height() as usize;
+
+    let pixels: Vec<RGBA8> = img
+        .chunks_exact(4)
+        .map(|chunk| RGBA8 {
+            r: chunk[0],
+            g: chunk[1],
+            b: chunk[2],
+            a: chunk[3],
+        })
+        .collect();
+
+    (pixels, width, height)
 }
